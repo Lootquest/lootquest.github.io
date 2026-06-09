@@ -148,7 +148,7 @@
         <!-- Search, Filter & Sort Hub -->
         <section class="glass rounded-2xl p-4 sm:p-6 space-y-6">
             <!-- Controls row 1: Search and sorting -->
-            <div class="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
+            <div class="flex flex-col lg:flex-row gap-4 items-stretch lg:items-center justify-between">
                 <!-- Search bar -->
                 <div class="relative flex-grow max-w-xl">
                     <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
@@ -168,14 +168,15 @@
                     </button>
                 </div>
 
-                <!-- Sort drop-down & Giveaway type switcher -->
-                <div class="flex items-center gap-3">
+                <!-- Sort drop-down, Giveaway type switcher & Grid/List switcher -->
+                <div class="flex flex-wrap items-center gap-3">
+                    <!-- Sort Selection -->
                     <div class="flex-grow md:flex-grow-0 relative">
                         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-500 uppercase">Sort</span>
                         <select 
                             id="sort-select" 
                             onchange="applyFiltersAndSort()"
-                            class="w-full md:w-48 pl-14 pr-8 py-3 bg-slate-900/80 border border-slate-800 rounded-xl text-xs sm:text-sm font-semibold text-slate-300 focus:outline-none focus:border-brand-500 transition-all cursor-pointer appearance-none"
+                            class="w-full md:w-44 pl-14 pr-8 py-3 bg-slate-900/80 border border-slate-800 rounded-xl text-xs sm:text-sm font-semibold text-slate-300 focus:outline-none focus:border-brand-500 transition-all cursor-pointer appearance-none"
                         >
                             <option value="popularity">Popularity</option>
                             <option value="date" selected>Newest Release</option>
@@ -197,6 +198,16 @@
                         </button>
                         <button onclick="setTypeFilter('beta')" data-type="beta" class="type-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 transition-all">
                             Betas
+                        </button>
+                    </div>
+
+                    <!-- Layout View Switcher (Grid/List) -->
+                    <div class="flex bg-slate-900/80 border border-slate-800 p-1 rounded-xl" id="view-switch-group">
+                        <button onclick="setViewMode('grid')" data-view="grid" class="view-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition-all bg-brand-500 text-dark-950" title="Grid Layout">
+                            <i class="fa-solid fa-grip"></i>
+                        </button>
+                        <button onclick="setViewMode('list')" data-view="list" class="view-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 transition-all" title="List Layout">
+                            <i class="fa-solid fa-list"></i>
                         </button>
                     </div>
                 </div>
@@ -233,8 +244,8 @@
 
         <!-- Giveaways Grid & Empty State Area -->
         <section>
-            <!-- Loading Grid Placeholders -->
-            <div id="skeleton-loader" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Loading Grid Placeholders (Enforced 2-column grid layout limit on ALL viewports) -->
+            <div id="skeleton-loader" class="grid grid-cols-2 gap-3 sm:gap-6">
                 <!-- 6 skeleton cards -->
                 <template id="skeleton-template">
                     <div class="bg-slate-900/40 border border-slate-800/80 rounded-2xl overflow-hidden p-4 space-y-4 animate-pulse">
@@ -249,8 +260,8 @@
                 </template>
             </div>
 
-            <!-- Actual Giveaways Grid -->
-            <div id="giveaways-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 hidden">
+            <!-- Actual Giveaways Grid (Enforced 2-column grid layout limit on ALL viewports) -->
+            <div id="giveaways-grid" class="grid grid-cols-2 gap-3 sm:gap-6 hidden">
                 <!-- Dynamic Content Injection -->
             </div>
 
@@ -444,6 +455,7 @@
         let filteredGiveaways = [];
         let selectedPlatforms = new Set();
         let selectedType = 'all'; // 'all', 'game', 'loot', 'beta'
+        let viewMode = 'grid'; // 'grid' or 'list'
         let currentRedirectUrl = '';
         let currentTargetId = '';
         let countdownTimerInterval = null;
@@ -508,13 +520,25 @@
             applyFiltersAndSort();
         }
 
-        // Clear Claimed Cache
-        function clearClaimedStorage() {
-            if (confirm("Are you sure you want to mark all claimed loot tracking opportunities as unowned?")) {
-                localStorage.removeItem('lootquest_claimed_links');
-                claimedItems.clear();
-                applyFiltersAndSort();
+        // Set layout mode (grid or list)
+        function setViewMode(mode) {
+            viewMode = mode;
+            const buttons = document.querySelectorAll('#view-switch-group .view-btn');
+            buttons.forEach(btn => {
+                if (btn.dataset.view === mode) {
+                    btn.className = "view-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition-all bg-brand-500 text-dark-950";
+                } else {
+                    btn.className = "view-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 transition-all";
+                }
+            });
+
+            const grid = document.getElementById('giveaways-grid');
+            if (viewMode === 'grid') {
+                grid.className = "grid grid-cols-2 gap-3 sm:gap-6";
+            } else {
+                grid.className = "flex flex-col gap-4";
             }
+            renderGiveawayCards();
         }
 
         // Initialize Loading Placeholders
@@ -711,7 +735,6 @@
         }
 
         // Primary engine combining text search, multi-selection platforms, and categorization
-        // Note: Worth stats calculations are removed as requested.
         function applyFiltersAndSort() {
             const searchQuery = document.getElementById('search-input').value.trim().toLowerCase();
             const sortBy = document.getElementById('sort-select').value;
@@ -802,7 +825,7 @@
             document.getElementById('filter-summary').textContent = summaryText;
         }
 
-        // Render card elements inside grid layout
+        // Render card elements inside grid layout (Optimized for both Grid and List structures)
         function renderGiveawayCards() {
             const grid = document.getElementById('giveaways-grid');
             const emptyState = document.getElementById('empty-state');
@@ -834,9 +857,9 @@
                 const getLootBtnHtml = `
                     <button 
                         onclick="openGiveawayModal(${item.id})" 
-                        class="px-4 py-2 bg-slate-900 border border-slate-800 hover:border-brand-500/50 hover:bg-slate-800/80 rounded-xl text-xs font-extrabold text-slate-200 hover:text-white transition-all flex items-center gap-1"
+                        class="px-2.5 py-1.5 sm:px-4 sm:py-2 bg-slate-900 border border-slate-800 hover:border-brand-500/50 hover:bg-slate-800/80 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-extrabold text-slate-200 hover:text-white transition-all flex items-center justify-center gap-1 flex-1 sm:flex-initial"
                     >
-                        Get Loot <i class="fa-solid fa-arrow-right text-[10px] opacity-80"></i>
+                        Get <span class="hidden sm:inline">Loot</span> <i class="fa-solid fa-arrow-right text-[9px] sm:text-[10px] opacity-80"></i>
                     </button>
                 `;
 
@@ -844,67 +867,139 @@
                 const claimToggleBtnHtml = `
                     <button 
                         onclick="toggleClaimed(event, ${item.id})" 
-                        class="px-3 py-2 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${isClaimed ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-300 hover:border-slate-700'}"
+                        class="px-2 py-1.5 sm:px-3 sm:py-2 rounded-lg sm:rounded-xl border text-[10px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1.5 flex-1 sm:flex-initial ${isClaimed ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-300 hover:border-slate-700'}"
                         title="${isClaimed ? 'Mark as unclaimed' : 'Mark as claimed'}"
                     >
-                        <i class="fa-solid ${isClaimed ? 'fa-circle-check text-emerald-400' : 'fa-circle-notch text-slate-600'}"></i>
-                        <span class="text-[11px]">${isClaimed ? 'Claimed' : 'Mark Claimed'}</span>
+                        <i class="fa-solid ${isClaimed ? 'fa-circle-check text-emerald-400' : 'fa-circle-notch text-slate-600'} text-[10px] sm:text-xs"></i>
+                        <span class="text-[9px] sm:text-[11px]">${isClaimed ? 'Claimed' : 'Claim'}</span>
                     </button>
                 `;
 
-                card.innerHTML = `
-                    <div class="relative aspect-video overflow-hidden group/img">
-                        <img 
-                            src="${item.thumbnail}" 
-                            alt="${item.title}" 
-                            class="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-110"
-                            onerror="this.src='https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=600'"
-                        >
-                        <!-- Category and Claimed Badges overlaid on top-left of image -->
-                        <div class="absolute top-3 left-3 flex gap-2">
-                            <span class="px-2.5 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-widest ${badgeClass} shadow-md">
-                                ${item.type}
-                            </span>
+                if (viewMode === 'grid') {
+                    // Standard Grid layout rendering - Enforced 2-columns (Compact Mobile Adaptation)
+                    card.innerHTML = `
+                        <div class="relative aspect-video overflow-hidden group/img">
+                            <img 
+                                src="${item.thumbnail}" 
+                                alt="${item.title}" 
+                                class="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-110"
+                                onerror="this.src='https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=600'"
+                            >
+                            <!-- Category and Claimed Badges overlaid on top-left of image -->
+                            <div class="absolute top-2 left-2 sm:top-3 sm:left-3 flex flex-wrap gap-1 max-w-[85%]">
+                                <span class="px-1.5 py-0.5 sm:px-2.5 sm:py-0.5 rounded text-[8px] sm:text-[10px] font-extrabold uppercase tracking-widest ${badgeClass} shadow-md">
+                                    ${item.type}
+                                </span>
+                                ${isClaimed ? `
+                                <span class="px-1.5 py-0.5 sm:px-2.5 sm:py-0.5 rounded text-[8px] sm:text-[10px] font-extrabold uppercase tracking-widest bg-emerald-500 text-dark-950 shadow-md flex items-center gap-0.5 sm:gap-1">
+                                    <i class="fa-solid fa-check"></i> <span class="hidden xs:inline">Claimed</span>
+                                </span>` : ''}
+                            </div>
+                            
+                            <div class="absolute top-2 right-2 sm:top-3 sm:right-3">
+                                <span class="px-1.5 py-0.5 sm:px-2.5 sm:py-1 bg-dark-950/95 border border-slate-800 text-emerald-400 text-[10px] sm:text-xs font-black rounded sm:rounded-lg shadow-md">
+                                    ${item.worth}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="p-3 sm:p-5 flex-grow flex flex-col justify-between space-y-3 sm:space-y-4">
+                            <div class="space-y-1 sm:space-y-2">
+                                <div class="flex items-center gap-1 flex-wrap">
+                                    ${platformBadgesHtml}
+                                </div>
+                                
+                                <h4 class="text-xs sm:text-base font-extrabold text-white leading-snug line-clamp-1" title="${item.title}">
+                                    ${item.title}
+                                </h4>
+                                
+                                <p class="text-[10px] sm:text-xs text-slate-400 line-clamp-2 leading-relaxed">
+                                    ${item.description}
+                                </p>
+                            </div>
+
+                            <div class="pt-2 sm:pt-3 border-t border-slate-800/60 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-2">
+                                <div class="text-[9px] sm:text-[10px] text-slate-500">
+                                    <i class="fa-solid fa-hourglass-half text-slate-600 mr-1"></i>
+                                    <span class="font-medium">${item.keys_left || "Active"}</span>
+                                </div>
+                                <div class="flex items-center gap-1.5 w-full xl:w-auto">
+                                    ${claimToggleBtnHtml}
+                                    ${getLootBtnHtml}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    // Optimized List layout rendering (horizontal rows)
+                    card.className = "glass rounded-2xl overflow-hidden shadow-lg transition-all duration-300 flex flex-col md:flex-row p-4 gap-4 glass-hover border-slate-800/80";
+                    card.innerHTML = `
+                        <!-- Left Image Frame -->
+                        <div class="relative w-full md:w-48 aspect-video md:aspect-[16/10] overflow-hidden rounded-xl flex-shrink-0 group/img">
+                            <img 
+                                src="${item.thumbnail}" 
+                                alt="${item.title}" 
+                                class="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-110"
+                                onerror="this.src='https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=600'"
+                            >
+                            <div class="absolute top-2 left-2 flex gap-1.5">
+                                <span class="px-2 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-widest ${badgeClass} shadow-md">
+                                    ${item.type}
+                                </span>
+                            </div>
                             ${isClaimed ? `
-                            <span class="px-2.5 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-widest bg-emerald-500 text-dark-950 shadow-md flex items-center gap-1">
-                                <i class="fa-solid fa-check"></i> Claimed
-                            </span>` : ''}
-                        </div>
-                        
-                        <div class="absolute top-3 right-3">
-                            <span class="px-2.5 py-1 bg-dark-950/95 border border-slate-800 text-emerald-400 text-xs font-black rounded-lg shadow-md">
-                                ${item.worth}
-                            </span>
-                        </div>
-                    </div>
-
-                    <div class="p-5 flex-grow flex flex-col justify-between space-y-4">
-                        <div class="space-y-2">
-                            <div class="flex items-center gap-1.5 flex-wrap">
-                                ${platformBadgesHtml}
-                            </div>
-                            
-                            <h4 class="text-base font-extrabold text-white leading-snug line-clamp-1">
-                                ${item.title}
-                            </h4>
-                            
-                            <p class="text-xs text-slate-400 line-clamp-2 leading-relaxed">
-                                ${item.description}
-                            </p>
+                            <div class="absolute inset-0 bg-dark-950/40 backdrop-blur-[1px] flex items-center justify-center">
+                                <span class="px-2.5 py-1 rounded bg-emerald-500 text-dark-950 text-xs font-black tracking-wide shadow-md flex items-center gap-1">
+                                    <i class="fa-solid fa-circle-check"></i> CLAIMED
+                                </span>
+                            </div>` : ''}
                         </div>
 
-                        <div class="pt-3 border-t border-slate-800/60 flex items-center justify-between gap-2">
-                            <div class="text-[10px] text-slate-500">
-                                <i class="fa-solid fa-hourglass-half text-slate-600 mr-1"></i>
-                                <span class="font-medium">${item.keys_left || "Active"}</span>
+                        <!-- Center Details Block -->
+                        <div class="flex-grow flex flex-col justify-between py-1 min-w-0">
+                            <div class="space-y-1.5">
+                                <!-- Platforms Row -->
+                                <div class="flex items-center justify-between flex-wrap gap-2">
+                                    <div class="flex items-center gap-1.5 flex-wrap">
+                                        ${platformBadgesHtml}
+                                    </div>
+                                    <span class="px-2 py-0.5 bg-dark-950/95 border border-slate-800 text-emerald-400 text-xs font-black rounded-lg shadow-md md:hidden">
+                                        ${item.worth}
+                                    </span>
+                                </div>
+                                
+                                <!-- Title -->
+                                <h4 class="text-base font-extrabold text-white leading-snug truncate">
+                                    ${item.title}
+                                </h4>
+                                
+                                <!-- Description -->
+                                <p class="text-xs text-slate-400 line-clamp-1 md:line-clamp-2 leading-relaxed">
+                                    ${item.description}
+                                </p>
                             </div>
-                            <div class="flex items-center gap-2">
-                                ${claimToggleBtnHtml}
-                                ${getLootBtnHtml}
+
+                            <!-- Footer Indicators -->
+                            <div class="text-[10px] text-slate-500 flex items-center gap-3 pt-2 md:pt-0">
+                                <span>
+                                    <i class="fa-solid fa-hourglass-half text-slate-600 mr-1"></i>
+                                    <span class="font-medium">${item.keys_left || "Active"}</span>
+                                </span>
+                                <span class="hidden md:inline text-slate-700">•</span>
+                                <span class="hidden md:inline font-semibold text-emerald-400">
+                                    Standard Value: ${item.worth}
+                                </span>
                             </div>
                         </div>
-                    </div>
-                `;
+
+                        <!-- Right Actions Frame -->
+                        <div class="flex flex-row md:flex-col gap-2 pt-3 md:pt-0 border-t md:border-t-0 border-slate-800/60 md:border-l md:border-slate-800/40 md:pl-4 justify-end md:justify-center flex-shrink-0 min-w-full md:min-w-[150px]">
+                            ${claimToggleBtnHtml}
+                            ${getLootBtnHtml}
+                        </div>
+                    `;
+                }
+
                 grid.appendChild(card);
             });
         }
@@ -915,32 +1010,32 @@
             let html = '';
 
             if (list.includes('steam')) {
-                html += `<span class="inline-flex items-center px-2 py-0.5 rounded bg-slate-950 border border-slate-800 text-[10px] text-slate-400"><i class="fa-brands fa-steam mr-1"></i>Steam</span>`;
+                html += `<span class="inline-flex items-center px-1.5 py-0.5 rounded bg-slate-950 border border-slate-800 text-[8px] sm:text-[10px] text-slate-400"><i class="fa-brands fa-steam mr-1"></i>Steam</span>`;
             }
             if (list.includes('epic')) {
-                html += `<span class="inline-flex items-center px-2 py-0.5 rounded bg-slate-950 border border-slate-800 text-[10px] text-slate-400"><i class="fa-solid fa-bolt mr-1 text-emerald-400"></i>Epic</span>`;
+                html += `<span class="inline-flex items-center px-1.5 py-0.5 rounded bg-slate-950 border border-slate-800 text-[8px] sm:text-[10px] text-slate-400"><i class="fa-solid fa-bolt mr-1 text-emerald-400"></i>Epic</span>`;
             }
             if (list.includes('gog')) {
-                html += `<span class="inline-flex items-center px-2 py-0.5 rounded bg-slate-950 border border-slate-800 text-[10px] text-slate-400"><i class="fa-solid fa-gamepad mr-1"></i>GOG</span>`;
+                html += `<span class="inline-flex items-center px-1.5 py-0.5 rounded bg-slate-950 border border-slate-800 text-[8px] sm:text-[10px] text-slate-400"><i class="fa-solid fa-gamepad mr-1"></i>GOG</span>`;
             }
             if (list.includes('itch')) {
-                html += `<span class="inline-flex items-center px-2 py-0.5 rounded bg-slate-950 border border-slate-800 text-[10px] text-slate-400"><i class="fa-brands fa-itch-io mr-1"></i>Itch</span>`;
+                html += `<span class="inline-flex items-center px-1.5 py-0.5 rounded bg-slate-950 border border-slate-800 text-[8px] sm:text-[10px] text-slate-400"><i class="fa-brands fa-itch-io mr-1"></i>Itch</span>`;
             }
             if (list.includes('playstation') || list.includes('ps4') || list.includes('ps5')) {
-                html += `<span class="inline-flex items-center px-2 py-0.5 rounded bg-slate-950 border border-slate-800 text-[10px] text-slate-400"><i class="fa-brands fa-playstation mr-1"></i>PlayStation</span>`;
+                html += `<span class="inline-flex items-center px-1.5 py-0.5 rounded bg-slate-950 border border-slate-800 text-[8px] sm:text-[10px] text-slate-400"><i class="fa-brands fa-playstation mr-1"></i>PS</span>`;
             }
             if (list.includes('xbox')) {
-                html += `<span class="inline-flex items-center px-2 py-0.5 rounded bg-slate-950 border border-slate-800 text-[10px] text-slate-400"><i class="fa-brands fa-xbox mr-1"></i>Xbox</span>`;
+                html += `<span class="inline-flex items-center px-1.5 py-0.5 rounded bg-slate-950 border border-slate-800 text-[8px] sm:text-[10px] text-slate-400"><i class="fa-brands fa-xbox mr-1"></i>Xbox</span>`;
             }
             if (list.includes('android')) {
-                html += `<span class="inline-flex items-center px-2 py-0.5 rounded bg-slate-950 border border-slate-800 text-[10px] text-slate-400"><i class="fa-brands fa-android mr-1"></i>Android</span>`;
+                html += `<span class="inline-flex items-center px-1.5 py-0.5 rounded bg-slate-950 border border-slate-800 text-[8px] sm:text-[10px] text-slate-400"><i class="fa-brands fa-android mr-1"></i>Android</span>`;
             }
             if (list.includes('ios') || list.includes('apple')) {
-                html += `<span class="inline-flex items-center px-2 py-0.5 rounded bg-slate-950 border border-slate-800 text-[10px] text-slate-400"><i class="fa-brands fa-apple mr-1"></i>iOS</span>`;
+                html += `<span class="inline-flex items-center px-1.5 py-0.5 rounded bg-slate-950 border border-slate-800 text-[8px] sm:text-[10px] text-slate-400"><i class="fa-brands fa-apple mr-1"></i>iOS</span>`;
             }
 
             if (html === '') {
-                html = `<span class="inline-flex items-center px-2 py-0.5 rounded bg-slate-950 border border-slate-800 text-[10px] text-slate-400"><i class="fa-solid fa-gamepad mr-1"></i>${platformStr.split(',')[0]}</span>`;
+                html = `<span class="inline-flex items-center px-1.5 py-0.5 rounded bg-slate-950 border border-slate-800 text-[8px] sm:text-[10px] text-slate-400"><i class="fa-solid fa-gamepad mr-1"></i>${platformStr.split(',')[0]}</span>`;
             }
 
             return html;
